@@ -1,28 +1,26 @@
-<form id="uploadForm" enctype="multipart/form-data">
-  <input type="file" id="fileInput" />
-  <button type="submit">Upload</button>
-</form>
+const AWS = require("aws-sdk");
+const s3 = new AWS.S3();
 
-<div id="result"></div>
+exports.handler = async (event) => {
+  try {
+    const fileContent = Buffer.from(event.body, "base64");
 
-<script>
-document.getElementById("uploadForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
+    const params = {
+      Bucket: process.env.S3_BUCKET,
+      Key: `upload-${Date.now()}`, // unique filename
+      Body: fileContent,
+    };
 
-  const file = document.getElementById("fileInput").files[0];
-  const reader = new FileReader();
+    await s3.putObject(params).promise();
 
-  reader.onload = async () => {
-    const base64Data = reader.result.split(",")[1]; // strip data URL prefix
-
-    const res = await fetch("/.netlify/functions/upload", {
-      method: "POST",
-      body: base64Data,
-    });
-
-    document.getElementById("result").innerText = await res.text();
-  };
-
-  reader.readAsDataURL(file);
-});
-</script>
+    return {
+      statusCode: 200,
+      body: "File uploaded successfully",
+    };
+  } catch (err) {
+    return {
+      statusCode: 500,
+      body: "Upload failed: " + err.message,
+    };
+  }
+};
